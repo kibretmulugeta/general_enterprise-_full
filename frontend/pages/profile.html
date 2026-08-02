@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Profile Settings - Enterprise Auth</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <nav class="navbar">
+    <a href="/" class="nav-brand">🛡️ <span>Enterprise Auth</span></a>
+    <div id="nav-right"></div>
+  </nav>
+
+  <main class="container">
+    <div class="glass-card" style="max-width:650px; margin:2rem auto;">
+      <h1 style="font-size:1.6rem; margin-bottom:1.5rem;">User Profile Settings</h1>
+
+      <!-- Avatar Section -->
+      <div style="display:flex; align-items:center; gap:1.5rem; padding-bottom:1.5rem; border-bottom:var(--glass-border); margin-bottom:1.5rem;">
+        <img id="avatar-preview" src="/images/default-avatar.png" alt="Avatar" style="width:80px; height:80px; border-radius:50%; object-fit:cover; border:3px solid var(--accent-primary);">
+        <div>
+          <h3 style="font-size:1.1rem;">Profile Picture</h3>
+          <p style="color:var(--text-secondary); font-size:0.85rem; margin-bottom:0.75rem;">PNG, JPG, WEBP or GIF. Max size 5MB.</p>
+          <input type="file" id="avatar-input" accept="image/*" style="display:none;">
+          <button type="button" onclick="document.getElementById('avatar-input').click()" class="btn btn-secondary" style="padding:0.4rem 1rem;">Upload New Photo</button>
+        </div>
+      </div>
+
+      <!-- Profile Form -->
+      <form id="profile-form">
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem;">
+          <div class="form-group">
+            <label for="firstName">First Name</label>
+            <input type="text" id="firstName" class="form-control" required>
+          </div>
+          <div class="form-group">
+            <label for="lastName">Last Name</label>
+            <input type="text" id="lastName" class="form-control" required>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="displayName">Display Name</label>
+          <input type="text" id="displayName" class="form-control" required>
+        </div>
+
+        <div class="form-group">
+          <label for="email">Email Address</label>
+          <input type="email" id="email" class="form-control" disabled style="opacity:0.7;">
+          <p style="font-size:0.75rem; color:var(--text-muted); margin-top:0.3rem;">Primary email cannot be changed directly.</p>
+        </div>
+
+        <button type="submit" class="btn btn-primary" style="margin-top:1rem;">Save Profile Changes</button>
+      </form>
+    </div>
+  </main>
+
+  <script src="/js/config.js"></script>
+  <script src="/js/ui.js"></script>
+  <script src="/js/api.js"></script>
+  <script src="/js/auth.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', async () => {
+      const user = await Auth.requireAuth();
+      if (user) {
+        document.getElementById('firstName').value = user.firstName || '';
+        document.getElementById('lastName').value = user.lastName || '';
+        document.getElementById('displayName').value = user.displayName || `${user.firstName} ${user.lastName}`;
+        document.getElementById('email').value = user.email;
+        if (user.profilePicture) {
+          document.getElementById('avatar-preview').src = user.profilePicture;
+        }
+
+        // Avatar file upload handler
+        document.getElementById('avatar-input').addEventListener('change', async (e) => {
+          const file = e.target.files[0];
+          if (!file) return;
+
+          const formData = new FormData();
+          formData.append('avatar', file);
+
+          try {
+            const res = await API.request('/profile/avatar', {
+              method: 'POST',
+              body: formData
+            });
+
+            if (res.success) {
+              document.getElementById('avatar-preview').src = res.data.profilePicture;
+              UI.showToast('Profile photo updated successfully!', 'success');
+            }
+          } catch (err) {
+            UI.showToast(err.message, 'danger');
+          }
+        });
+
+        // Profile form update handler
+        document.getElementById('profile-form').addEventListener('submit', async (e) => {
+          e.preventDefault();
+          const firstName = document.getElementById('firstName').value.trim();
+          const lastName = document.getElementById('lastName').value.trim();
+          const displayName = document.getElementById('displayName').value.trim();
+
+          try {
+            const res = await API.request('/profile', {
+              method: 'PUT',
+              body: { firstName, lastName, displayName }
+            });
+
+            if (res.success) {
+              UI.showToast('Profile details updated successfully!', 'success');
+            }
+          } catch (err) {
+            UI.showToast(err.message, 'danger');
+          }
+        });
+      }
+    });
+  </script>
+</body>
+</html>

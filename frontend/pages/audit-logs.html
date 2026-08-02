@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Audit Logs - Enterprise Auth</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <nav class="navbar">
+    <a href="/" class="nav-brand">🛡️ <span>Enterprise Auth</span></a>
+    <div id="nav-right"></div>
+  </nav>
+
+  <main class="container">
+    <div class="glass-card">
+      <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem; margin-bottom:1.5rem;">
+        <div>
+          <h1 style="font-size:1.6rem;">Security Audit Logs</h1>
+          <p style="color:var(--text-secondary); font-size:0.9rem;">Traceability records of authentication, authorization, and profile actions.</p>
+        </div>
+      </div>
+
+      <!-- Table Filters -->
+      <div style="display:flex; gap:1rem; margin-bottom:1rem; flex-wrap:wrap;">
+        <input type="text" id="action-filter" class="form-control" placeholder="Filter by Action (e.g. LOGIN_SUCCESS)" style="max-width:260px;">
+        <select id="status-filter" class="form-control" style="max-width:180px;">
+          <option value="">All Statuses</option>
+          <option value="SUCCESS">SUCCESS</option>
+          <option value="FAILURE">FAILURE</option>
+          <option value="WARNING">WARNING</option>
+        </select>
+        <button id="apply-filters-btn" class="btn btn-secondary" style="padding:0.4rem 1rem;">Filter</button>
+      </div>
+
+      <div class="table-responsive">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Timestamp</th>
+              <th>Action</th>
+              <th>Status</th>
+              <th>IP & Device</th>
+              <th>User Email</th>
+            </tr>
+          </thead>
+          <tbody id="audit-table-body">
+            <tr><td colspan="5" style="text-align:center; padding:2rem; color:var(--text-muted);">Loading security audit trail...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+
+  <script src="/js/config.js"></script>
+  <script src="/js/ui.js"></script>
+  <script src="/js/api.js"></script>
+  <script src="/js/auth.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', async () => {
+      await Auth.requireAuth();
+      fetchLogs();
+
+      document.getElementById('apply-filters-btn').addEventListener('click', () => fetchLogs());
+
+      async function fetchLogs() {
+        const action = document.getElementById('action-filter').value.trim();
+        const status = document.getElementById('status-filter').value;
+        const queryParams = new URLSearchParams();
+        if (action) queryParams.append('action', action);
+        if (status) queryParams.append('status', status);
+
+        try {
+          const res = await API.request(`/audit-logs?${queryParams.toString()}`);
+          const tbody = document.getElementById('audit-table-body');
+
+          if (res.success && res.data.logs.length > 0) {
+            tbody.innerHTML = res.data.logs.map(log => `
+              <tr>
+                <td style="white-space:nowrap; font-size:0.85rem;">${new Date(log.createdAt).toLocaleString()}</td>
+                <td><strong style="color:var(--accent-primary);">${log.action}</strong></td>
+                <td>
+                  <span class="badge badge-${log.status === 'SUCCESS' ? 'success' : log.status === 'FAILURE' ? 'danger' : 'warning'}">${log.status}</span>
+                </td>
+                <td style="font-size:0.85rem;">
+                  <code>${log.ipAddress}</code><br>
+                  <span style="color:var(--text-secondary);">${log.browser || 'N/A'} on ${log.os || 'N/A'}</span>
+                </td>
+                <td style="font-size:0.85rem;">${log.userEmail || 'N/A'}</td>
+              </tr>
+            `).join('');
+          } else {
+            tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; padding:2rem;">No audit logs matched your query.</td></tr>`;
+          }
+        } catch (err) {
+          UI.showToast(err.message, 'danger');
+        }
+      }
+    });
+  </script>
+</body>
+</html>

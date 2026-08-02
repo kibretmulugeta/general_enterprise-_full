@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard - Enterprise Auth Framework</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+  <!-- Navigation Bar -->
+  <nav class="navbar">
+    <a href="/" class="nav-brand">
+      🛡️ <span>Enterprise Auth</span>
+    </a>
+    <div id="nav-right"></div>
+  </nav>
+
+  <main class="container">
+    <!-- Welcome Header -->
+    <div class="glass-card" style="margin-bottom: 2rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem;">
+      <div style="display:flex; align-items:center; gap:1.25rem;">
+        <img id="user-avatar" src="/images/default-avatar.png" alt="Avatar" style="width:64px; height:64px; border-radius:50%; object-fit:cover; border:2px solid var(--accent-primary);">
+        <div>
+          <h1 id="welcome-heading" style="font-size:1.75rem; font-weight:700;">Welcome back!</h1>
+          <p id="user-email" style="color:var(--text-secondary); font-size:0.95rem;"></p>
+        </div>
+      </div>
+      <div style="display:flex; gap:0.75rem;">
+        <span id="role-badge" class="badge badge-info" style="font-size:0.85rem; padding:0.4rem 1rem;">Role: User</span>
+        <span id="mfa-badge" class="badge badge-warning" style="font-size:0.85rem; padding:0.4rem 1rem;">2FA: Disabled</span>
+      </div>
+    </div>
+
+    <!-- Quick Stats Grid -->
+    <div class="grid-4">
+      <div class="glass-card stat-card">
+        <div class="stat-icon">🔑</div>
+        <div class="stat-info">
+          <h3 id="stat-sessions">1</h3>
+          <p>Active Sessions</p>
+        </div>
+      </div>
+
+      <div class="glass-card stat-card">
+        <div class="stat-icon">🛡️</div>
+        <div class="stat-info">
+          <h3 id="stat-security-score">High</h3>
+          <p>Security Health</p>
+        </div>
+      </div>
+
+      <div class="glass-card stat-card">
+        <div class="stat-icon">📜</div>
+        <div class="stat-info">
+          <h3 id="stat-audit-count">0</h3>
+          <p>Logged Security Events</p>
+        </div>
+      </div>
+
+      <div class="glass-card stat-card">
+        <div class="stat-icon">🌐</div>
+        <div class="stat-info">
+          <h3 id="stat-connected">1</h3>
+          <p>Auth Providers Linked</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Platform Modules Grid -->
+    <h2 style="font-size:1.4rem; margin-bottom:1rem;">Platform Quick Access</h2>
+    <div class="grid-4">
+      <a href="/pages/profile.html" class="glass-card" style="text-decoration:none; color:inherit;">
+        <h3>👤 Profile Settings</h3>
+        <p style="color:var(--text-secondary); font-size:0.85rem; margin-top:0.5rem;">Update personal info and upload avatar picture.</p>
+      </a>
+
+      <a href="/pages/security.html" class="glass-card" style="text-decoration:none; color:inherit;">
+        <h3>🔒 Security & 2FA</h3>
+        <p style="color:var(--text-secondary); font-size:0.85rem; margin-top:0.5rem;">Enable 2FA TOTP, view recovery codes, and change password.</p>
+      </a>
+
+      <a href="/pages/sessions.html" class="glass-card" style="text-decoration:none; color:inherit;">
+        <h3>💻 Active Sessions</h3>
+        <p style="color:var(--text-secondary); font-size:0.85rem; margin-top:0.5rem;">Inspect active devices, browsers, IPs, and revoke sessions.</p>
+      </a>
+
+      <a href="/pages/audit-logs.html" class="glass-card" style="text-decoration:none; color:inherit;">
+        <h3>📋 Security Audit Logs</h3>
+        <p style="color:var(--text-secondary); font-size:0.85rem; margin-top:0.5rem;">Review security event timestamps, IP addresses, and actions.</p>
+      </a>
+    </div>
+  </main>
+
+  <script src="/js/config.js"></script>
+  <script src="/js/ui.js"></script>
+  <script src="/js/api.js"></script>
+  <script src="/js/auth.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', async () => {
+      const user = await Auth.requireAuth();
+      if (user) {
+        document.getElementById('welcome-heading').innerText = `Welcome back, ${user.displayName || user.firstName}!`;
+        document.getElementById('user-email').innerText = user.email;
+        document.getElementById('role-badge').innerText = `Role: ${user.role}`;
+        
+        if (user.profilePicture) {
+          document.getElementById('user-avatar').src = user.profilePicture;
+        }
+
+        const mfaBadge = document.getElementById('mfa-badge');
+        if (user.mfaEnabled) {
+          mfaBadge.innerText = '2FA: Enabled';
+          mfaBadge.className = 'badge badge-success';
+        } else {
+          mfaBadge.innerText = '2FA: Disabled';
+          mfaBadge.className = 'badge badge-warning';
+        }
+
+        // Fetch user active session count & audit event count
+        try {
+          const sessionsRes = await API.request('/sessions');
+          if (sessionsRes.success) {
+            document.getElementById('stat-sessions').innerText = sessionsRes.data.sessions.length;
+          }
+
+          const auditRes = await API.request('/audit-logs?limit=1');
+          if (auditRes.success) {
+            document.getElementById('stat-audit-count').innerText = auditRes.data.pagination.total;
+          }
+        } catch (err) {
+          console.warn('Error loading stats:', err);
+        }
+      }
+    });
+  </script>
+</body>
+</html>

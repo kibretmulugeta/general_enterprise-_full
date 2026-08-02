@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Verifying Email - Enterprise Auth</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <nav class="navbar">
+    <a href="/" class="nav-brand">🛡️ <span>Enterprise Auth</span></a>
+    <div id="nav-right"></div>
+  </nav>
+
+  <main class="container">
+    <div class="auth-container glass-card" style="text-align:center; padding:3rem 2rem;">
+      <div id="status-spinner" style="font-size:3rem; margin-bottom:1rem;">⏳</div>
+      <h1 id="status-title">Verifying Email Address...</h1>
+      <p id="status-msg" style="color:var(--text-secondary); margin-top:0.5rem;">Please wait while we validate your verification token.</p>
+      
+      <div id="status-action" style="margin-top:2rem; display:none;">
+        <a href="/pages/login.html" class="btn btn-primary">Proceed to Login</a>
+      </div>
+    </div>
+  </main>
+
+  <script src="/js/config.js"></script>
+  <script src="/js/ui.js"></script>
+  <script src="/js/api.js"></script>
+  <script src="/js/auth.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', async () => {
+      const urlParams = new URLSearchParams(window.location.search);
+      const token = urlParams.get('token');
+
+      const spinner = document.getElementById('status-spinner');
+      const title = document.getElementById('status-title');
+      const msg = document.getElementById('status-msg');
+      const action = document.getElementById('status-action');
+
+      if (!token) {
+        spinner.innerText = '❌';
+        title.innerText = 'Verification Failed';
+        msg.innerText = 'Verification token is missing.';
+        return;
+      }
+
+      try {
+        const res = await API.request(`/auth/verify-email?token=${token}`);
+        if (res.success) {
+          spinner.innerText = '✅';
+          title.innerText = 'Email Verified!';
+          msg.innerText = res.data.message;
+          action.style.display = 'block';
+        }
+      } catch (err) {
+        spinner.innerText = '❌';
+        title.innerText = 'Verification Failed';
+        msg.innerText = err.message;
+      }
+    });
+  </script>
+</body>
+</html>

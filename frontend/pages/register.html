@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Create Account - Enterprise Auth Framework</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+  <!-- Navigation Bar -->
+  <nav class="navbar">
+    <a href="/" class="nav-brand">
+      🛡️ <span>Enterprise Auth</span>
+    </a>
+    <div id="nav-right"></div>
+  </nav>
+
+  <main class="container">
+    <div class="auth-container glass-card" style="max-width:540px;">
+      <div class="auth-header">
+        <h1>Create Account</h1>
+        <p>Join the enterprise authentication platform</p>
+      </div>
+
+      <form id="register-form">
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem;">
+          <div class="form-group">
+            <label for="firstName">First Name</label>
+            <input type="text" id="firstName" class="form-control" placeholder="John" required>
+          </div>
+          <div class="form-group">
+            <label for="lastName">Last Name</label>
+            <input type="text" id="lastName" class="form-control" placeholder="Doe" required>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="email">Email Address</label>
+          <input type="email" id="email" class="form-control" placeholder="john.doe@company.com" required>
+        </div>
+
+        <div class="form-group">
+          <label for="password">Password</label>
+          <input type="password" id="password" class="form-control" placeholder="••••••••••••" required>
+          <div class="password-meter">
+            <div id="password-meter-bar" class="password-meter-bar"></div>
+          </div>
+          <p id="password-strength-text" style="font-size:0.75rem; color:var(--text-muted); margin-top:0.3rem;">Must contain 8+ chars, upper & lower case, number, and special character.</p>
+        </div>
+
+        <div class="form-group">
+          <label for="confirmPassword">Confirm Password</label>
+          <input type="password" id="confirmPassword" class="form-control" placeholder="••••••••••••" required>
+        </div>
+
+        <button type="submit" class="btn btn-primary btn-block" style="margin-top:1.5rem;">Create Enterprise Account</button>
+      </form>
+
+      <p style="text-align:center; margin-top:1.5rem; font-size:0.9rem; color:var(--text-secondary);">
+        Already have an account? <a href="/pages/login.html" style="color:var(--accent-primary); text-decoration:none; font-weight:600;">Sign In</a>
+      </p>
+    </div>
+  </main>
+
+  <script src="/js/config.js"></script>
+  <script src="/js/ui.js"></script>
+  <script src="/js/api.js"></script>
+  <script src="/js/auth.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', async () => {
+      await Auth.requireGuest();
+
+      const passwordInput = document.getElementById('password');
+      const meterBar = document.getElementById('password-meter-bar');
+      const strengthText = document.getElementById('password-strength-text');
+
+      passwordInput.addEventListener('input', () => {
+        const val = passwordInput.value;
+        let score = 0;
+        if (val.length >= 8) score++;
+        if (/[A-Z]/.test(val)) score++;
+        if (/[a-z]/.test(val)) score++;
+        if (/[0-9]/.test(val)) score++;
+        if (/[^A-Za-z0-9]/.test(val)) score++;
+
+        const percentage = (score / 5) * 100;
+        meterBar.style.width = `${percentage}%`;
+
+        if (score <= 2) {
+          meterBar.style.backgroundColor = '#ef4444';
+          strengthText.innerText = 'Weak Password';
+        } else if (score === 3 || score === 4) {
+          meterBar.style.backgroundColor = '#f59e0b';
+          strengthText.innerText = 'Moderate Password';
+        } else {
+          meterBar.style.backgroundColor = '#10b981';
+          strengthText.innerText = 'Strong Password';
+        }
+      });
+
+      const registerForm = document.getElementById('register-form');
+      registerForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const firstName = document.getElementById('firstName').value.trim();
+        const lastName = document.getElementById('lastName').value.trim();
+        const email = document.getElementById('email').value.trim();
+        const password = document.getElementById('password').value;
+        const confirmPassword = document.getElementById('confirmPassword').value;
+
+        if (password !== confirmPassword) {
+          return UI.showToast('Passwords do not match.', 'danger');
+        }
+
+        try {
+          const res = await API.request('/auth/register', {
+            method: 'POST',
+            body: { firstName, lastName, email, password }
+          });
+
+          if (res.success) {
+            UI.showToast(res.data.message, 'success');
+            registerForm.reset();
+            setTimeout(() => {
+              window.location.href = '/pages/login.html';
+            }, 3000);
+          }
+        } catch (error) {
+          UI.showToast(error.message, 'danger');
+        }
+      });
+    });
+  </script>
+</body>
+</html>

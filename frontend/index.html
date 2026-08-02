@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Enterprise Authentication Framework</title>
+  <meta name="description" content="Production-ready self-hosted enterprise authentication and identity platform with OAuth, JWT, RBAC, 2FA, and Audit Logging.">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+  <!-- Navigation Bar -->
+  <nav class="navbar">
+    <a href="/" class="nav-brand">
+      🛡️ <span>Enterprise Auth</span>
+    </a>
+    <div id="nav-right">
+      <!-- Rendered dynamically by Auth.js -->
+    </div>
+  </nav>
+
+  <!-- Hero Section -->
+  <main class="container" style="display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding-top:4rem;">
+    <div class="glass-card" style="max-width: 850px; width: 100%;">
+      <span class="badge badge-info" style="margin-bottom:1rem; font-size:0.85rem; padding:0.4rem 1rem;">Production Ready Enterprise Architecture</span>
+      <h1 style="font-size: 3rem; font-weight: 700; margin-bottom: 1.25rem; line-height: 1.2;">
+        Self-Hosted Enterprise <br><span style="background:var(--accent-gradient); -webkit-background-clip:text; -webkit-text-fill-color:transparent;">Identity & Auth Platform</span>
+      </h1>
+      <p style="color: var(--text-secondary); font-size: 1.15rem; max-width: 650px; margin: 0 auto 2rem auto;">
+        Plug-and-play authentication framework for Hotel, Healthcare, ERP, CRM, and SaaS applications. Supports Social OAuth 2.0, HttpOnly Cookies, RBAC/PBAC, TOTP 2FA, Session Tracking, and Security Audit Logs.
+      </p>
+
+      <div style="display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;">
+        <a href="/pages/register.html" class="btn btn-primary" style="padding:0.9rem 2rem; font-size:1.05rem;">Create Account</a>
+        <a href="/pages/login.html" class="btn btn-secondary" style="padding:0.9rem 2rem; font-size:1.05rem;">Sign In</a>
+      </div>
+    </div>
+
+    <!-- Feature Grid -->
+    <div class="grid-4" style="margin-top: 4rem; width: 100%;">
+      <div class="glass-card">
+        <div class="stat-icon">🔐</div>
+        <h3 style="margin-top:1rem; font-size:1.2rem;">JWT & Cookie Sessions</h3>
+        <p style="color:var(--text-secondary); font-size:0.9rem; margin-top:0.5rem;">HttpOnly secure cookies with Refresh Token Rotation to prevent XSS and token replay attacks.</p>
+      </div>
+
+      <div class="glass-card">
+        <div class="stat-icon">🌐</div>
+        <h3 style="margin-top:1rem; font-size:1.2rem;">OAuth 2.0 Integration</h3>
+        <p style="color:var(--text-secondary); font-size:0.9rem; margin-top:0.5rem;">Pre-configured Google & GitHub OAuth with provider account linking into unified user profiles.</p>
+      </div>
+
+      <div class="glass-card">
+        <div class="stat-icon">🛡️</div>
+        <h3 style="margin-top:1rem; font-size:1.2rem;">RBAC & PBAC Security</h3>
+        <p style="color:var(--text-secondary); font-size:0.9rem; margin-top:0.5rem;">Fine-grained Role & Permission Authorization engine designed for multi-tier enterprise systems.</p>
+      </div>
+
+      <div class="glass-card">
+        <div class="stat-icon">📱</div>
+        <h3 style="margin-top:1rem; font-size:1.2rem;">TOTP 2FA & Sessions</h3>
+        <p style="color:var(--text-secondary); font-size:0.9rem; margin-top:0.5rem;">Speakeasy Authenticator app integration, backup codes, device fingerprinting, and session revocation.</p>
+      </div>
+    </div>
+  </main>
+
+  <script src="/js/config.js"></script>
+  <script src="/js/ui.js"></script>
+  <script src="/js/api.js"></script>
+  <script src="/js/auth.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      Auth.checkAuth();
+    });
+  </script>
+</body>
+</html>

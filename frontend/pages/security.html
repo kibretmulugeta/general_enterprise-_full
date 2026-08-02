@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Account Security & 2FA - Enterprise Auth</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <nav class="navbar">
+    <a href="/" class="nav-brand">🛡️ <span>Enterprise Auth</span></a>
+    <div id="nav-right"></div>
+  </nav>
+
+  <main class="container" style="max-width:800px;">
+    <!-- 2FA Multi-Factor Section -->
+    <div class="glass-card" style="margin-bottom:2rem;">
+      <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem; padding-bottom:1rem; border-bottom:var(--glass-border);">
+        <div>
+          <h2 style="font-size:1.3rem;">Two-Factor Authentication (2FA)</h2>
+          <p style="color:var(--text-secondary); font-size:0.85rem; margin-top:0.25rem;">Secure your account using Google Authenticator, Microsoft Authenticator, or Authy.</p>
+        </div>
+        <div id="mfa-status-container">
+          <!-- Rendered dynamically -->
+        </div>
+      </div>
+    </div>
+
+    <!-- Password Change Section -->
+    <div class="glass-card" style="margin-bottom:2rem;">
+      <h2 style="font-size:1.3rem; margin-bottom:1rem;">Change Password</h2>
+      <form id="change-pass-form">
+        <div class="form-group">
+          <label for="currentPassword">Current Password</label>
+          <input type="password" id="currentPassword" class="form-control" placeholder="••••••••••••" required>
+        </div>
+        <div class="form-group">
+          <label for="newPassword">New Password</label>
+          <input type="password" id="newPassword" class="form-control" placeholder="••••••••••••" required>
+        </div>
+        <button type="submit" class="btn btn-primary">Update Password</button>
+      </form>
+    </div>
+
+    <!-- Connected OAuth Accounts Section -->
+    <div class="glass-card">
+      <h2 style="font-size:1.3rem; margin-bottom:0.5rem;">Connected Social Accounts</h2>
+      <p style="color:var(--text-secondary); font-size:0.85rem; margin-bottom:1rem;">Manage linked OAuth identity providers.</p>
+      
+      <div id="connected-accounts-list" style="display:flex; flex-direction:column; gap:0.75rem;">
+        <!-- Rendered dynamically -->
+      </div>
+    </div>
+  </main>
+
+  <!-- Setup 2FA Modal -->
+  <div id="setup-2fa-modal" class="modal-overlay">
+    <div class="modal-content" style="text-align:center;">
+      <h2>Setup Authenticator App</h2>
+      <p style="color:var(--text-secondary); font-size:0.85rem; margin-top:0.5rem; margin-bottom:1rem;">Scan this QR code with Google Authenticator or Microsoft Authenticator.</p>
+
+      <div style="background:#ffffff; padding:1rem; display:inline-block; border-radius:12px; margin-bottom:1rem;">
+        <img id="qr-code-img" src="" alt="2FA QR Code" style="width:180px; height:180px;">
+      </div>
+
+      <p style="font-size:0.8rem; color:var(--text-muted); word-break:break-all;">Secret Key: <strong id="mfa-secret-text" style="color:var(--accent-primary);"></strong></p>
+
+      <form id="enable-2fa-form" style="margin-top:1.5rem;">
+        <div class="form-group">
+          <label for="totpToken">Enter 6-Digit Code from App</label>
+          <input type="text" id="totpToken" class="form-control" placeholder="123456" maxlength="6" required style="font-size:1.2rem; text-align:center; letter-spacing:0.2em;">
+        </div>
+        <div style="display:flex; gap:1rem;">
+          <button type="button" onclick="UI.closeModal('setup-2fa-modal')" class="btn btn-secondary" style="flex:1;">Cancel</button>
+          <button type="submit" class="btn btn-primary" style="flex:1;">Activate 2FA</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Backup Recovery Codes Modal -->
+  <div id="backup-codes-modal" class="modal-overlay">
+    <div class="modal-content" style="text-align:center;">
+      <h2 style="color:var(--success);">2FA Activated!</h2>
+      <p style="color:var(--text-secondary); font-size:0.85rem; margin-top:0.5rem; margin-bottom:1rem;">Save these recovery backup codes in a safe place. You can use them to log in if you lose access to your phone.</p>
+
+      <div id="recovery-codes-grid" style="display:grid; grid-template-columns:1fr 1fr; gap:0.5rem; background:rgba(0,0,0,0.3); padding:1rem; border-radius:8px; font-family:monospace; font-size:1.1rem; color:var(--accent-primary); margin-bottom:1.5rem;">
+      </div>
+
+      <button type="button" onclick="UI.closeModal('backup-codes-modal'); window.location.reload();" class="btn btn-primary btn-block">I Have Saved My Recovery Codes</button>
+    </div>
+  </div>
+
+  <script src="/js/config.js"></script>
+  <script src="/js/ui.js"></script>
+  <script src="/js/api.js"></script>
+  <script src="/js/auth.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', async () => {
+      const user = await Auth.requireAuth();
+      if (user) {
+        renderMFAStatus(user.mfaEnabled);
+        loadConnectedAccounts(user);
+      }
+
+      function renderMFAStatus(enabled) {
+        const container = document.getElementById('mfa-status-container');
+        if (enabled) {
+          container.innerHTML = `
+            <button onclick="disable2FA()" class="btn btn-danger" style="padding:0.5rem 1rem;">Disable 2FA</button>
+          `;
+        } else {
+          container.innerHTML = `
+            <button onclick="start2FASetup()" class="btn btn-primary" style="padding:0.5rem 1rem;">Enable 2FA</button>
+          `;
+        }
+      }
+
+      window.start2FASetup = async () => {
+        try {
+          const res = await API.request('/profile/mfa/setup');
+          if (res.success) {
+            document.getElementById('qr-code-img').src = res.data.qrCodeUrl;
+            document.getElementById('mfa-secret-text').innerText = res.data.secret;
+            UI.openModal('setup-2fa-modal');
+          }
+        } catch (err) {
+          UI.showToast(err.message, 'danger');
+        }
+      };
+
+      document.getElementById('enable-2fa-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const token = document.getElementById('totpToken').value.trim();
+        try {
+          const res = await API.request('/profile/mfa/enable', {
+            method: 'POST',
+            body: { token }
+          });
+
+          if (res.success) {
+            UI.closeModal('setup-2fa-modal');
+            const grid = document.getElementById('recovery-codes-grid');
+            grid.innerHTML = res.data.recoveryCodes.map(code => `<div>${code}</div>`).join('');
+            UI.openModal('backup-codes-modal');
+          }
+        } catch (err) {
+          UI.showToast(err.message, 'danger');
+        }
+      });
+
+      window.disable2FA = async () => {
+        const pass = prompt('Enter your password to confirm disabling 2FA:');
+        if (!pass) return;
+        try {
+          const res = await API.request('/profile/mfa/disable', {
+            method: 'POST',
+            body: { password: pass }
+          });
+          if (res.success) {
+            UI.showToast(res.data.message, 'success');
+            setTimeout(() => window.location.reload(), 1500);
+          }
+        } catch (err) {
+          UI.showToast(err.message, 'danger');
+        }
+      };
+
+      // Password Change Handler
+      document.getElementById('change-pass-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const currentPassword = document.getElementById('currentPassword').value;
+        const newPassword = document.getElementById('newPassword').value;
+        try {
+          const res = await API.request('/profile/change-password', {
+            method: 'POST',
+            body: { currentPassword, newPassword }
+          });
+          if (res.success) {
+            UI.showToast(res.data.message, 'success');
+            document.getElementById('change-pass-form').reset();
+          }
+        } catch (err) {
+          UI.showToast(err.message, 'danger');
+        }
+      });
+
+      async function loadConnectedAccounts(user) {
+        const container = document.getElementById('connected-accounts-list');
+        container.innerHTML = `
+          <div style="display:flex; justify-content:space-between; align-items:center; padding:0.75rem; background:rgba(0,0,0,0.2); border-radius:8px;">
+            <div><strong>Google Account</strong> (${user.googleId ? 'Linked' : 'Not Connected'})</div>
+            ${user.googleId ? '<span class="badge badge-success">Connected</span>' : '<a href="/api/v1/auth/google" class="btn btn-secondary" style="padding:0.25rem 0.75rem; font-size:0.8rem;">Connect</a>'}
+          </div>
+          <div style="display:flex; justify-content:space-between; align-items:center; padding:0.75rem; background:rgba(0,0,0,0.2); border-radius:8px;">
+            <div><strong>GitHub Account</strong> (${user.githubId ? 'Linked' : 'Not Connected'})</div>
+            ${user.githubId ? '<span class="badge badge-success">Connected</span>' : '<a href="/api/v1/auth/github" class="btn btn-secondary" style="padding:0.25rem 0.75rem; font-size:0.8rem;">Connect</a>'}
+          </div>
+        `;
+      }
+    });
+  </script>
+</body>
+</html>

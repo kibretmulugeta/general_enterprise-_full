@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Active Sessions - Enterprise Auth</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <nav class="navbar">
+    <a href="/" class="nav-brand">🛡️ <span>Enterprise Auth</span></a>
+    <div id="nav-right"></div>
+  </nav>
+
+  <main class="container">
+    <div class="glass-card">
+      <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem; margin-bottom:1.5rem;">
+        <div>
+          <h1 style="font-size:1.6rem;">Active Sessions & Devices</h1>
+          <p style="color:var(--text-secondary); font-size:0.9rem;">Manage all devices currently signed in to your enterprise account.</p>
+        </div>
+        <button id="revoke-all-btn" class="btn btn-danger" style="padding:0.6rem 1.2rem;">Log Out All Other Devices</button>
+      </div>
+
+      <div class="table-responsive">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Device & OS</th>
+              <th>Browser</th>
+              <th>IP Address</th>
+              <th>Last Active</th>
+              <th>Status</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody id="sessions-table-body">
+            <tr><td colspan="6" style="text-align:center; padding:2rem; color:var(--text-muted);">Loading active sessions...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+
+  <script src="/js/config.js"></script>
+  <script src="/js/ui.js"></script>
+  <script src="/js/api.js"></script>
+  <script src="/js/auth.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', async () => {
+      await Auth.requireAuth();
+      loadSessions();
+
+      async function loadSessions() {
+        try {
+          const res = await API.request('/sessions');
+          const tbody = document.getElementById('sessions-table-body');
+
+          if (res.success && res.data.sessions.length > 0) {
+            tbody.innerHTML = res.data.sessions.map(s => `
+              <tr>
+                <td>
+                  <strong>${s.device || 'Desktop'}</strong><br>
+                  <span style="font-size:0.8rem; color:var(--text-secondary);">${s.os}</span>
+                </td>
+                <td>${s.browser}</td>
+                <td><code>${s.ipAddress}</code></td>
+                <td>${new Date(s.lastActive).toLocaleString()}</td>
+                <td>
+                  ${s.isCurrent 
+                    ? '<span class="badge badge-success">Current Device</span>' 
+                    : '<span class="badge badge-info">Active</span>'}
+                </td>
+                <td>
+                  ${!s.isCurrent 
+                    ? `<button onclick="revokeSession('${s.id}')" class="btn btn-secondary" style="padding:0.25rem 0.75rem; font-size:0.8rem; color:var(--danger); border-color:rgba(239,68,68,0.3);">Revoke</button>` 
+                    : '<span style="color:var(--text-muted); font-size:0.8rem;">Active Now</span>'}
+                </td>
+              </tr>
+            `).join('');
+          } else {
+            tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:2rem;">No active sessions found.</td></tr>`;
+          }
+        } catch (err) {
+          UI.showToast(err.message, 'danger');
+        }
+      }
+
+      window.revokeSession = async (id) => {
+        if (!confirm('Are you sure you want to revoke this session?')) return;
+        try {
+          const res = await API.request(`/sessions/${id}`, { method: 'DELETE' });
+          if (res.success) {
+            UI.showToast('Session revoked successfully.', 'success');
+            loadSessions();
+          }
+        } catch (err) {
+          UI.showToast(err.message, 'danger');
+        }
+      };
+
+      document.getElementById('revoke-all-btn').addEventListener('click', async () => {
+        if (!confirm('Are you sure you want to log out all other devices?')) return;
+        try {
+          const res = await API.request('/sessions', { method: 'DELETE' });
+          if (res.success) {
+            UI.showToast(res.data.message, 'success');
+            loadSessions();
+          }
+        } catch (err) {
+          UI.showToast(err.message, 'danger');
+        }
+      });
+    });
+  </script>
+</body>
+</html>

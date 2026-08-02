@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Control Panel - Enterprise Auth</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <nav class="navbar">
+    <a href="/" class="nav-brand">🛡️ <span>Enterprise Auth</span></a>
+    <div id="nav-right"></div>
+  </nav>
+
+  <main class="container">
+    <!-- Admin Header -->
+    <div class="glass-card" style="margin-bottom:2rem;">
+      <h1 style="font-size:1.8rem; margin-bottom:0.25rem;">Enterprise Admin Control Panel</h1>
+      <p style="color:var(--text-secondary); font-size:0.9rem;">Manage user accounts, assign roles, inspect platform authentication stats, and monitor active sessions.</p>
+    </div>
+
+    <!-- Analytics Stat Cards -->
+    <div class="grid-4">
+      <div class="glass-card stat-card">
+        <div class="stat-icon">👥</div>
+        <div class="stat-info">
+          <h3 id="admin-stat-total-users">0</h3>
+          <p>Total Registered Users</p>
+        </div>
+      </div>
+
+      <div class="glass-card stat-card">
+        <div class="stat-icon">🟢</div>
+        <div class="stat-info">
+          <h3 id="admin-stat-online">0</h3>
+          <p>Online Sessions</p>
+        </div>
+      </div>
+
+      <div class="glass-card stat-card">
+        <div class="stat-icon">✅</div>
+        <div class="stat-info">
+          <h3 id="admin-stat-logins-success">0</h3>
+          <p>Successful Logins</p>
+        </div>
+      </div>
+
+      <div class="glass-card stat-card">
+        <div class="stat-icon">⚠️</div>
+        <div class="stat-info">
+          <h3 id="admin-stat-logins-failed">0</h3>
+          <p>Failed Logins</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- User Management Table -->
+    <div class="glass-card">
+      <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem; margin-bottom:1rem;">
+        <h2 style="font-size:1.3rem;">User Management</h2>
+        <input type="text" id="user-search" class="form-control" placeholder="Search by name or email..." style="max-width:280px;">
+      </div>
+
+      <div class="table-responsive">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>User</th>
+              <th>Email</th>
+              <th>Provider</th>
+              <th>Role</th>
+              <th>Status</th>
+              <th>Joined Date</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="admin-users-table">
+            <tr><td colspan="7" style="text-align:center; padding:2rem; color:var(--text-muted);">Loading user records...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+
+  <script src="/js/config.js"></script>
+  <script src="/js/ui.js"></script>
+  <script src="/js/api.js"></script>
+  <script src="/js/auth.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', async () => {
+      await Auth.requireAdmin();
+      loadAnalytics();
+      loadUsers();
+
+      document.getElementById('user-search').addEventListener('input', (e) => {
+        loadUsers(e.target.value.trim());
+      });
+
+      async function loadAnalytics() {
+        try {
+          const res = await API.request('/admin/analytics');
+          if (res.success) {
+            const a = res.data.analytics;
+            document.getElementById('admin-stat-total-users').innerText = a.totalUsers;
+            document.getElementById('admin-stat-online').innerText = a.onlineSessions;
+            document.getElementById('admin-stat-logins-success').innerText = a.logins.success;
+            document.getElementById('admin-stat-logins-failed').innerText = a.logins.failed;
+          }
+        } catch (err) {
+          console.warn('Error fetching analytics:', err);
+        }
+      }
+
+      async function loadUsers(search = '') {
+        try {
+          const res = await API.request(`/admin/users?search=${encodeURIComponent(search)}`);
+          const tbody = document.getElementById('admin-users-table');
+
+          if (res.success && res.data.users.length > 0) {
+            tbody.innerHTML = res.data.users.map(u => `
+              <tr>
+                <td>
+                  <strong>${u.displayName || u.firstName + ' ' + u.lastName}</strong>
+                </td>
+                <td>${u.email}</td>
+                <td><span class="badge badge-info">${u.provider}</span></td>
+                <td>
+                  <select onchange="updateRole('${u._id}', this.value)" class="form-control" style="padding:0.2rem 0.5rem; font-size:0.85rem;">
+                    <option value="Super Admin" ${u.role === 'Super Admin' ? 'selected' : ''}>Super Admin</option>
+                    <option value="Admin" ${u.role === 'Admin' ? 'selected' : ''}>Admin</option>
+                    <option value="Manager" ${u.role === 'Manager' ? 'selected' : ''}>Manager</option>
+                    <option value="Employee" ${u.role === 'Employee' ? 'selected' : ''}>Employee</option>
+                    <option value="User" ${u.role === 'User' ? 'selected' : ''}>User</option>
+                    <option value="Guest" ${u.role === 'Guest' ? 'selected' : ''}>Guest</option>
+                  </select>
+                </td>
+                <td>
+                  <span class="badge badge-${u.status === 'active' ? 'success' : u.status === 'suspended' ? 'danger' : 'warning'}">${u.status}</span>
+                </td>
+                <td style="font-size:0.85rem;">${new Date(u.createdAt).toLocaleDateString()}</td>
+                <td>
+                  ${u.status === 'active' 
+                    ? `<button onclick="updateStatus('${u._id}', 'suspended')" class="btn btn-secondary" style="padding:0.2rem 0.5rem; font-size:0.75rem; color:var(--danger);">Suspend</button>`
+                    : `<button onclick="updateStatus('${u._id}', 'active')" class="btn btn-secondary" style="padding:0.2rem 0.5rem; font-size:0.75rem; color:var(--success);">Activate</button>`}
+                </td>
+              </tr>
+            `).join('');
+          } else {
+            tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:2rem;">No user records found.</td></tr>`;
+          }
+        } catch (err) {
+          UI.showToast(err.message, 'danger');
+        }
+      }
+
+      window.updateRole = async (userId, newRole) => {
+        try {
+          const res = await API.request(`/admin/users/${userId}/role`, {
+            method: 'PUT',
+            body: { role: newRole }
+          });
+          if (res.success) {
+            UI.showToast(res.data.message, 'success');
+          }
+        } catch (err) {
+          UI.showToast(err.message, 'danger');
+        }
+      };
+
+      window.updateStatus = async (userId, status) => {
+        try {
+          const res = await API.request(`/admin/users/${userId}/status`, {
+            method: 'PUT',
+            body: { status }
+          });
+          if (res.success) {
+            UI.showToast(res.data.message, 'success');
+            loadUsers();
+          }
+        } catch (err) {
+          UI.showToast(err.message, 'danger');
+        }
+      };
+    });
+  </script>
+</body>
+</html>
